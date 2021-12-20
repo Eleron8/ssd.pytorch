@@ -378,11 +378,15 @@ def test_net(save_folder, net, cuda, dataset, transform, top_k,
     for i in range(num_images):
         im, gt, h, w = dataset.pull_item(i)
 
-        x = Variable(im.unsqueeze(0))
+        # x = Variable(im.unsqueeze(0))
+        # print("CUDA: ", args.cuda)
+        x = im.unsqueeze(0)
+        
         if args.cuda:
             x = x.cuda()
         _t['im_detect'].tic()
-        detections = net(x).data
+        # detections = net(x).data
+        detections = net(x)
         detect_time = _t['im_detect'].toc(average=False)
 
         # skip j = 0, because it's the background class
@@ -397,8 +401,8 @@ def test_net(save_folder, net, cuda, dataset, transform, top_k,
             boxes[:, 2] *= w
             boxes[:, 1] *= h
             boxes[:, 3] *= h
-            scores = dets[:, 0].cpu().numpy()
-            cls_dets = np.hstack((boxes.cpu().numpy(),
+            scores = dets[:, 0].cpu().detach().numpy()
+            cls_dets = np.hstack((boxes.cpu().detach().numpy(),
                                   scores[:, np.newaxis])).astype(np.float32,
                                                                  copy=False)
             all_boxes[j][i] = cls_dets
@@ -430,7 +434,8 @@ if __name__ == '__main__':
                            BaseTransform(300, dataset_mean),
                            VOCAnnotationTransform())
     if args.cuda:
-        net = net.cuda()
+        device = 'cuda'
+        net = net.to(device)
         cudnn.benchmark = True
     # evaluation
     test_net(args.save_folder, net, args.cuda, dataset,

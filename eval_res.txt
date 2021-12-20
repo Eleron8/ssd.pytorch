@@ -1,0 +1,51 @@
+Saving cached annotations to /home/almas/data/VOCdevkit/VOC2007/annotations_cache/annots.pkl
+AP for aeroplane = 0.8170
+AP for bicycle = 0.8546
+AP for bird = 0.7505
+AP for boat = 0.7075
+AP for bottle = 0.4970
+AP for bus = 0.8517
+AP for car = 0.8591
+AP for cat = 0.8832
+AP for chair = 0.6124
+AP for cow = 0.8122
+AP for diningtable = 0.7495
+AP for dog = 0.8581
+AP for horse = 0.8671
+AP for motorbike = 0.8418
+AP for person = 0.7832
+AP for pottedplant = 0.5200
+AP for sheep = 0.7786
+AP for sofa = 0.8079
+AP for train = 0.8738
+AP for tvmonitor = 0.7584
+Mean AP = 0.7742
+~~~~~~~~
+Results:
+0.817
+0.855
+0.751
+0.708
+0.497
+0.852
+0.859
+0.883
+0.612
+0.812
+0.750
+0.858
+0.867
+0.842
+0.783
+0.520
+0.779
+0.808
+0.874
+0.758
+0.774
+~~~~~~~~
+
+--------------------------------------------------------------
+Results computed with the **unofficial** Python eval code.
+Results should be very close to the official MATLAB eval code.
+--------------------------------------------------------------

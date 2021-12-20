@@ -14,6 +14,7 @@ import torch.nn.init as init
 import torch.utils.data as data
 import numpy as np
 import argparse
+import visdom
 
 
 def str2bool(v):
@@ -55,13 +56,18 @@ args = parser.parse_args()
 
 
 if torch.cuda.is_available():
+    print("You have cuda")
     if args.cuda:
+        dev_num = torch.cuda.current_device()
+        dev_name = torch.cuda.get_device_name(dev_num)
+        print("Your device: ", dev_name)
         torch.set_default_tensor_type('torch.cuda.FloatTensor')
     if not args.cuda:
         print("WARNING: It looks like you have a CUDA device, but aren't " +
               "using CUDA.\nRun with --cuda for optimal training speed.")
         torch.set_default_tensor_type('torch.FloatTensor')
 else:
+    print("You don't have cuda")
     torch.set_default_tensor_type('torch.FloatTensor')
 
 if not os.path.exists(args.save_folder):
@@ -89,7 +95,7 @@ def train():
                                                          MEANS))
 
     if args.visdom:
-        import visdom
+       
         viz = visdom.Visdom()
 
     ssd_net = build_ssd('train', cfg['min_dim'], cfg['num_classes'])
@@ -139,19 +145,19 @@ def train():
     if args.visdom:
         vis_title = 'SSD.PyTorch on ' + dataset.name
         vis_legend = ['Loc Loss', 'Conf Loss', 'Total Loss']
-        iter_plot = create_vis_plot('Iteration', 'Loss', vis_title, vis_legend)
-        epoch_plot = create_vis_plot('Epoch', 'Loss', vis_title, vis_legend)
+        iter_plot = create_vis_plot('Iteration', 'Loss', vis_title, vis_legend, viz)
+        epoch_plot = create_vis_plot('Epoch', 'Loss', vis_title, vis_legend, viz)
 
     data_loader = data.DataLoader(dataset, args.batch_size,
                                   num_workers=args.num_workers,
-                                  shuffle=True, collate_fn=detection_collate,
+                                  shuffle=False, collate_fn=detection_collate,
                                   pin_memory=True)
     # create batch iterator
-    batch_iterator = iter(data_loader)
+    batch_iterator = iter(cycle(data_loader))
     for iteration in range(args.start_iter, cfg['max_iter']):
         if args.visdom and iteration != 0 and (iteration % epoch_size == 0):
             update_vis_plot(epoch, loc_loss, conf_loss, epoch_plot, None,
-                            'append', epoch_size)
+                            'append', viz, epoch_size)
             # reset epoch loss counters
             loc_loss = 0
             conf_loss = 0
@@ -180,16 +186,21 @@ def train():
         loss.backward()
         optimizer.step()
         t1 = time.time()
-        loc_loss += loss_l.data[0]
-        conf_loss += loss_c.data[0]
+        # loc_loss += loss_l.data[0]
+        loc_loss += loss_l.item()
+        # conf_loss += loss_c.data[0]
+        conf_loss += loss_c.item()
 
         if iteration % 10 == 0:
             print('timer: %.4f sec.' % (t1 - t0))
-            print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data[0]), end=' ')
+            # print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data[0]), end=' ')
+            print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.item()), end=' ')
 
         if args.visdom:
-            update_vis_plot(iteration, loss_l.data[0], loss_c.data[0],
-                            iter_plot, epoch_plot, 'append')
+            # update_vis_plot(iteration, loss_l.data[0], loss_c.data[0],
+            #                 iter_plot, epoch_plot, 'append', viz)
+            update_vis_plot(iteration, loss_l.item(), loss_c.item(),
+                            iter_plot, epoch_plot, 'append', viz)
 
         if iteration != 0 and iteration % 5000 == 0:
             print('Saving state, iter:', iteration)
@@ -220,7 +231,7 @@ def weights_init(m):
         m.bias.data.zero_()
 
 
-def create_vis_plot(_xlabel, _ylabel, _title, _legend):
+def create_vis_plot(_xlabel, _ylabel, _title, _legend, viz):
     return viz.line(
         X=torch.zeros((1,)).cpu(),
         Y=torch.zeros((1, 3)).cpu(),
@@ -232,8 +243,12 @@ def create_vis_plot(_xlabel, _ylabel, _title, _legend):
         )
     )
 
+def cycle(iterable):
+    while True:
+        for x in iterable:
+            yield x
 
-def update_vis_plot(iteration, loc, conf, window1, window2, update_type,
+def update_vis_plot(iteration, loc, conf, window1, window2, update_type, viz,
                     epoch_size=1):
     viz.line(
         X=torch.ones((1, 3)).cpu() * iteration,
